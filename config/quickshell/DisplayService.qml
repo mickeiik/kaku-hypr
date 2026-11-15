@@ -8,9 +8,10 @@ import Quickshell.Io
 // on/off, scale, HDR and the main screen, set from the display panel. They're also
 // written to ~/.config/sway/config.d/20-outputs.conf (not synced: it's per machine),
 // so they survive a restart.
-// One screen always stays on: the last one can't be turned off, and if none is on
-// (the screen left on was unplugged, or it's the only one at login) they're all
-// turned back on. shell.qml creates this from the start for that.
+// One screen always stays on: the last one can't be turned off, and if none is on for
+// a few seconds (the screen left on was unplugged, or a DisplayPort screen dropped out
+// while asleep) the others are turned on for now, not saved, and back off once a
+// screen that was on returns. shell.qml creates this from the start for that.
 //
 // The main screen is where workspace 1 is and what has focus at login (the launcher,
 // notifications and indicators follow the focused screen). Sway has no "primary".
@@ -28,9 +29,12 @@ Singleton {
     property string hdrAsked: "" // screen whose HDR was just turned on, checked by hdrCheck
     property string primary: "" // the main screen ("": none chosen)
 
+    property var fallbackOn: [] // screens turned on only because none was on
+
     function setEnabled(name, on) {
         if (!on && activeCount <= 1)
             return;
+        fallbackOn = fallbackOn.filter(n => n !== name); // the user's choice wins
         apply(name, on ? "enable" : "disable");
     }
     function setScale(name, scale) {
@@ -57,15 +61,16 @@ Singleton {
             hdrCheck.restart();
     }
 
-    // swaymsg output <name> <setting...>, and saved (an output's line for that setting
-    // replaced; "enable" just drops its "disable" line).
+    // swaymsg output <name> <setting...>, and saved unless persist is false (an output's
+    // line for that setting replaced; "enable" just drops its "disable" line).
     // A screen is focused before being turned off: Sway deletes its workspace if it's
     // empty, and Quickshell 0.2.1 crashes on that unless the workspace has focus (fixed
     // upstream in d4c9297, after the version Fedora has).
-    function apply(name, setting, value) {
+    function apply(name, setting, value, persist = true) {
         Quickshell.execDetached(["sh", "-c", `
             [ "$2" = disable ] && swaymsg -q focus output "$1"
             swaymsg output "$1" $2 $3
+            [ "$4" = 1 ] || exit 0
             f=~/.config/sway/config.d/20-outputs.conf
             touch "$f"
             case $2 in
@@ -73,7 +78,7 @@ Singleton {
                 *) sed -i "/^output $1 $2 /d" "$f" ;;
             esac
             [ "$2" = enable ] || echo "output $1 $2\${3:+ $3}" >> "$f"
-        `, "display", name, setting, value ?? ""]);
+        `, "display", name, setting, value ?? "", persist ? "1" : "0"]);
         rereadAfter.restart();
     }
     function refresh() {
@@ -106,6 +111,21 @@ Singleton {
         onTriggered: root.refresh()
     }
 
+    // No screen on: wait a moment (a DisplayPort screen waking up comes back by itself),
+    // then turn the others on, for now only
+    Timer {
+        id: noneOn
+        interval: 3000
+        onTriggered: {
+            const list = root.outputs;
+            if (list.length === 0 || list.some(o => o.active))
+                return;
+            root.fallbackOn = list.map(o => o.name);
+            for (const o of list)
+                root.apply(o.name, "enable", "", false);
+        }
+    }
+
     // Turning HDR on changes the screen's mode: give it time, then see whether it took
     Timer {
         id: hdrCheck
@@ -132,8 +152,19 @@ Singleton {
                 }
                 root.outputs = list;
                 if (list.length > 0 && !list.some(o => o.active)) {
-                    for (const o of list)
-                        root.apply(o.name, "enable");
+                    if (!noneOn.running)
+                        noneOn.start();
+                } else {
+                    noneOn.stop();
+                    // A screen that was on is back: turn the stand-ins off again
+                    const back = list.some(o => o.active && !root.fallbackOn.includes(o.name));
+                    if (back && root.fallbackOn.length > 0) {
+                        for (const n of root.fallbackOn) {
+                            if (list.some(o => o.name === n && o.active))
+                                root.apply(n, "disable", "", false);
+                        }
+                        root.fallbackOn = [];
+                    }
                 }
                 I3.refreshMonitors();
             }
