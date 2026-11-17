@@ -115,6 +115,13 @@ Singleton {
         restart();
     }
 
+    function unloadConfig() {
+        enabled = false;
+        server = "";
+        topics = [];
+        restart();
+    }
+
     function saveConfig(newServer, newTopics) {
         const c = { server: normalizeServer(newServer), topics: newTopics };
         server = c.server;
@@ -591,7 +598,7 @@ Singleton {
         printErrors: false
         onFileChanged: reload()
         onLoaded: root.applyConfig(text())
-        onLoadFailed: root.enabled = false
+        onLoadFailed: root.unloadConfig()
     }
 
     Process {
