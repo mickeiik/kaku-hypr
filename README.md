@@ -59,9 +59,9 @@ up the login screen, enables fingerprint login and lockout after 3 wrong passwor
 (faillock), and sets the GTK theme. Log out and back in afterwards.
 
 It first asks whether to add speech to text (or pass `--dictation` / `--no-dictation`).
-That's voxtype, from its GitHub releases (it isn't in Fedora's), and its ~2.6 GB speech
-model; it keeps about 2 GB of memory while running. Its updates then come with the
-rest, in the launcher's Update.
+That's voxtype, from its GitHub releases (it isn't in Fedora's), and its ~0.74 GB speech
+model, loaded only while you dictate. Its updates then come with the rest, in the
+launcher's Update.
 
 The keyboard is French AZERTY: change
 `xkb_layout` in `config/sway/config.d/10-input.conf` for yours. Dates are in French

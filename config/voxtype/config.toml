@@ -21,10 +21,12 @@ sample_rate = 16000
 max_duration_secs = 120
 
 [parakeet]
-# ~2.6 GB, downloaded by install.sh. Smaller (~670 MB), a bit less accurate:
-# "parakeet-tdt-0.6b-v3-int8". After changing it:
+# Parakeet Ultra (~0.74 GB), downloaded by install.sh. After changing it:
 # voxtype-onnx setup --download --model <name>
-model = "parakeet-tdt-0.6b-v3"
+model = "parakeet-ultra-Q8_0.gguf"
+# Loaded only while dictating: little memory the rest of the time, a short wait
+# when dictation starts
+on_demand_loading = true
 
 [output]
 mode = "type"

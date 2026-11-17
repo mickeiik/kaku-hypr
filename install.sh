@@ -9,8 +9,8 @@ backup=~/.config/kaku-backup-$(date +%Y%m%d-%H%M%S)
 
 step() { echo -e "\n\033[1;34m== $*\033[0m"; }
 
-# Speech to text: hold Super+D to dictate. Optional, as it's a ~2.6 GB download and
-# keeps ~2 GB of memory while running. Already installed: kept.
+# Speech to text: hold Super+D to dictate. Optional, as it's a ~0.74 GB download.
+# Already installed: kept.
 case "${1:-}" in
     --dictation) dictation=yes ;;
     --no-dictation) dictation=no ;;
@@ -18,7 +18,7 @@ case "${1:-}" in
         if rpm -q voxtype >/dev/null 2>&1; then
             dictation=yes
         elif [ -t 0 ]; then
-            read -rp "Install speech to text (Super+D, offline; ~2.6 GB download)? [y/N] " answer
+            read -rp "Install speech to text (Super+D, offline; ~0.74 GB download)? [y/N] " answer
             [[ $answer == [yY]* ]] && dictation=yes || dictation=no
         else
             dictation=no
@@ -65,8 +65,8 @@ mkdir -p ~/Pictures/Screenshots ~/Videos/Recordings
 mkdir -p ~/.local/share/flatpak/exports/share/applications
 
 if [ "$dictation" = yes ]; then
-    step "Speech to text: Parakeet model (~2.6 GB, once) and the voxtype service"
-    ~/.local/bin/voxtype-onnx setup --download --model parakeet-tdt-0.6b-v3
+    step "Speech to text: Parakeet model (~0.74 GB, once) and the voxtype service"
+    ~/.local/bin/voxtype-onnx setup --download --model parakeet-ultra-Q8_0.gguf
     place "$here/config/systemd/user/voxtype.service.d" ~/.config/systemd/user/voxtype.service.d
     systemctl --user daemon-reload
     systemctl --user enable voxtype
