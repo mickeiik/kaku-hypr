@@ -38,10 +38,35 @@ Rectangle {
         sulk: ["Hmph.", "We'll be over here.", "Fine. Not talking to you."]
     })
 
+    // SDDM loads a separate copy of this file on each screen, and only one of them gets
+    // the keyboard. The copies share `config` though, so the login state is mirrored
+    // through it: every screen shows the typing, whichever one receives it.
+    readonly property var shared: ["user", "password", "state", "message", "redFlash", "failures"]
+    Component.onCompleted: {
+        for (const key of shared) {
+            const value = config["shared_" + key];
+            if (value !== undefined)
+                root[key] = value;
+        }
+    }
+    Connections {
+        target: config
+        function onValueChanged(key, value) {
+            if (key.startsWith("shared_"))
+                root[key.slice(7)] = value;
+        }
+    }
+    onUserChanged: config.shared_user = user
+    onStateChanged: config.shared_state = state
+    onMessageChanged: config.shared_message = message
+    onRedFlashChanged: config.shared_redFlash = redFlash
+    onFailuresChanged: config.shared_failures = failures
+
     signal keyTyped()
     property int lastLength: 0
 
     onPasswordChanged: {
+        config.shared_password = password;
         if (password.length > lastLength)
             keyTyped();
         lastLength = password.length;
