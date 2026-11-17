@@ -11,7 +11,7 @@ set $term foot
 set $menu qs ipc call launcher toggle
 
 ### Look
-font pango:JetBrains Mono 9
+font pango:JetBrains Mono 10
 default_border pixel 2
 default_floating_border pixel 2
 gaps inner 0
