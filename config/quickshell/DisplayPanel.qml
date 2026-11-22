@@ -2,12 +2,14 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 
-// One framed card per screen (on/off, brightness, scale, main screen, HDR), then the
-// shell's text size
+// One framed card per screen (on/off, brightness, scale, rotation, main screen, HDR),
+// then the shell's text size
 Popout {
     id: root
 
     readonly property var scales: [1, 1.25, 1.5, 2]
+    // Hyprland's transforms 0 to 3 (the mirrored ones, 4 to 7, aren't offered)
+    readonly property var rotations: ["0°", "90°", "180°", "270°"]
     readonly property int textRange: TextSizeService.maxPx - TextSizeService.minPx
 
     // Small on/off button with an icon, side by side with others under a screen
@@ -172,6 +174,33 @@ Popout {
                             padding: 7
                             selected: Math.abs(screen.modelData.scale - modelData) < 0.01
                             onClicked: DisplayService.setScale(screen.name, modelData)
+                        }
+                    }
+                }
+
+                // Rotation: the screen keeps its place, its top-left corner
+                RowLayout {
+                    visible: screen.active
+                    Layout.fillWidth: true
+                    spacing: 6
+
+                    Icon {
+                        text: "\uf2f1"
+                        color: Theme.purple
+                        horizontalAlignment: Text.AlignHCenter
+                        Layout.preferredWidth: 18
+                        Layout.rightMargin: 6
+                    }
+                    Repeater {
+                        model: root.rotations
+
+                        SegmentButton {
+                            required property string modelData
+                            required property int index
+                            text: modelData
+                            padding: 7
+                            selected: screen.modelData.hypr.transform === index
+                            onClicked: DisplayService.setTransform(screen.name, index)
                         }
                     }
                 }
