@@ -48,8 +48,7 @@ setup:
 
 ## Install
 
-On Fedora (made on the [Sway spin](https://fedoraproject.org/spins/sway/), whose login
-screen runs on Sway):
+On Fedora 45:
 
     git clone https://github.com/mickeiik/kaku-hypr
     cd kaku-hypr
@@ -61,8 +60,9 @@ COPR (Hyprland isn't in Fedora's own repos), installs the packages in
 into place (your existing ones are moved to `~/.config/kaku-backup-<date>` first), sets
 up the login screen, enables fingerprint login and lockout after 3 wrong passwords
 (faillock), and sets the GTK theme. Log out, then pick Hyprland on the login screen:
-click the session name under the password (or press F10). The login screen remembers it;
-Sway stays there too, as a fallback.
+click the session name under the password (or press F10). The login screen remembers it.
+The login screen itself runs on Sway (Fedora's `sddm-wayland-sway`), which also lists a
+plain Sway session there.
 
 It first asks whether to add speech to text (or pass `--dictation` / `--no-dictation`).
 That's voxtype, from its GitHub releases (it isn't in Fedora's), and its ~0.74 GB speech

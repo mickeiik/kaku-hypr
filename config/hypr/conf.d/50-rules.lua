@@ -6,7 +6,7 @@ hl.window_rule({
     size = { 1100, 820 },
     center = true,
 })
--- Small windows that are better floating (what Fedora's Sway rules did)
+-- Small windows that are better floating
 hl.window_rule({
     name = "float-small",
     match = { class = "^(org.pulseaudio.pavucontrol|pavucontrol|pavucontrol-qt)$" },

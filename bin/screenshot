@@ -1,6 +1,6 @@
 #!/bin/sh
 # Screenshot on Hyprland, saved to ~/Pictures/Screenshots, copied to the clipboard,
-# with a notification (opening it shows the file). Same targets as grimshot (Sway's):
+# with a notification (opening it shows the file):
 #   screenshot area      select an area (Esc cancels)
 #   screenshot active    the focused window
 #   screenshot window    click a window

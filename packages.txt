@@ -4,11 +4,11 @@
 hyprland                # the compositor (COPR)
 xdg-desktop-portal-hyprland  # screen sharing, screenshots for apps (COPR)
 xdg-desktop-portal-gtk  # file pickers
-sway                    # runs the login screen (SDDM's compositor on Fedora)
-sway-config-fedora      # the Sway session, kept as a fallback at the login screen
+sddm                    # login manager (kaku login theme)
+sddm-wayland-sway       # the login screen runs on Sway, as on Fedora's Sway spin
+sway-config-fedora      # Sway's config (Sway needs one; it also lists a Sway session)
 swayidle                # lock and screen off when idle (works on Hyprland)
 swaylock                # fallback lock screen if Quickshell isn't running
-sddm                    # login manager (kaku login theme)
 quickshell              # the whole shell: bar, panels, launcher, notifications, lock screen...
 foot                    # terminal
 Thunar                  # file manager

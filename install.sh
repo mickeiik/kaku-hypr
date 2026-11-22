@@ -43,8 +43,8 @@ dnf copr list 2>/dev/null | grep -qi 'lionheartp/Hyprland' || sudo dnf copr enab
 
 step "Fedora packages"
 sudo dnf install -y $(sed 's/#.*//' "$here/packages.txt" | grep -v '^\s*$')
-# Replaced by the Quickshell launcher and notifications
-sudo dnf remove -y rofi dunst || true
+# Replaced by the Quickshell launcher and notifications, and bin/screenshot
+sudo dnf remove -y rofi dunst grimshot || true
 
 if [ "$dictation" = yes ]; then
     step "Speech to text (voxtype, not in Fedora's repos: newest 1.x RPM from GitHub)"
@@ -140,4 +140,4 @@ gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 step "Done"
 [ -d "$backup" ] && echo "Your previous files: $backup"
 echo "Log out, then pick Hyprland at the login screen (click the session name under"
-echo "the password, or F10) to start kaku-hypr. Sway stays there as a fallback."
+echo "the password, or F10) to start kaku-hypr."

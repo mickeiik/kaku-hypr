@@ -52,7 +52,7 @@ hl.config({
         no_update_news = true,
         no_donation_nag = true,
     },
-    -- Each new window splits the focused one along its longer side (what autotiling did on Sway)
+    -- Each new window splits the focused one along its longer side
     dwindle = { preserve_split = true },
 })
 

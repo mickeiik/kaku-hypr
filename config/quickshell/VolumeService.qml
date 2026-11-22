@@ -8,9 +8,8 @@ import Quickshell.Services.Pipewire
 // bindings call `qs ipc call volume hold 1` / `-1` on press and `release` on release,
 // `mute`, `micMute`).
 //
-// Held keys are repeated here, not by the compositor: Sway stopped repeating a key at
-// the next key event of any kind, so pressing Down before Up was fully released gave a
-// single step; Quickshell's own repeat doesn't depend on that.
+// Held keys are repeated here, not by the compositor, so a step never depends on how
+// the compositor repeats a bind (pressing Down before Up is fully released still works).
 Singleton {
     id: root
 
