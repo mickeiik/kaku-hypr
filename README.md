@@ -95,7 +95,9 @@ dotfiles).
 `~/.config/hypr/conf.d/20-monitors.lua`, one `hl.monitor({...})` line per screen. To
 place screens or rotate one, edit their line there (position and rotation are kept when
 the panel changes the rest). HDR is offered for screens that take HDR10 (`bitdepth = 10,
-cm = "hdr"`).
+cm = "hdr"`). Chromium-based apps look washed out in HDR unless started with
+`--disable-features=WaylandWpColorManagerV1`; `install.sh` sets it for Brave and
+VSCodium (Flathub). Other Chromium/Electron apps need the same flag, each in its own way.
 
 ## Keys
 

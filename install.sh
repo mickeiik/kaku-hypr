@@ -88,6 +88,19 @@ sudo authselect enable-feature with-faillock
 step "Firefox defaults (scroll over the tabs to switch them)"
 sudo install -Dm644 "$here/config/firefox/kaku-prefs.js" /usr/lib64/firefox/browser/defaults/preferences/kaku-prefs.js
 
+step "Brave and VSCodium (Flathub): normal colours on an HDR screen"
+# On an HDR screen, Chromium-based apps switch to HDR output themselves: white at
+# 203 nits (other apps get sdr_max_luminance) and their own sRGB curve (not
+# sdr_eotf), so they look washed out. With this flag they stay SDR like every other
+# app. No setting covers all Chromium/Electron apps: each Flatpak takes flags its own way.
+nocm=--disable-features=WaylandWpColorManagerV1
+brave_flags=~/.var/app/com.brave.Browser/config/brave-flags.conf
+mkdir -p "$(dirname "$brave_flags")"
+grep -qsxF -- "$nocm" "$brave_flags" || echo "$nocm" >>"$brave_flags"
+codium_args=$(flatpak override --user --show com.vscodium.codium 2>/dev/null | sed -n 's/^EDITOR_RUNTIME_ARGS=//p')
+[[ " $codium_args " == *" $nocm "* ]] ||
+    flatpak override --user --env=EDITOR_RUNTIME_ARGS="${codium_args:+$codium_args }$nocm" com.vscodium.codium
+
 step "DNS over HTTPS for the whole system (Mullvad: dns.mullvad.net)"
 # systemd-resolved can't speak HTTPS, so it forwards to dnscrypt-proxy, which does
 sudo install -Dm644 "$here/config/dns/dnscrypt-proxy.toml" /etc/dnscrypt-proxy/dnscrypt-proxy.toml
