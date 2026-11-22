@@ -71,14 +71,19 @@ Singleton {
     }
 
     // The monitor rule (a Lua table for hl.monitor) of a screen that's on, with
-    // changes ({ scale, hdr })
+    // changes ({ scale, hdr }).
+    // In HDR, the desktop and other SDR content would look washed out with Hyprland's
+    // defaults (sRGB curve, black at 0.2 nits, white at 80): gamma 2.2, a deep black
+    // and a 250-nit white instead. Black and white levels set by hand in the file are kept.
     function ruleFor(o, change) {
         const h = o.hypr;
         const scale = change.scale ?? o.scale;
         const hdr = change.hdr ?? o.hdr;
+        const sdrMin = o.hdr && h.sdrMinLuminance !== undefined && h.sdrMinLuminance !== 0.2 ? h.sdrMinLuminance : 0.005;
+        const sdrMax = o.hdr && h.sdrMaxLuminance !== undefined && h.sdrMaxLuminance !== 80 ? h.sdrMaxLuminance : 250;
         return `{ output = "${o.name}", mode = "${h.width}x${h.height}@${h.refreshRate.toFixed(3)}", `
             + `position = "${h.x}x${h.y}", scale = ${scale}, transform = ${h.transform}`
-            + (hdr ? `, bitdepth = 10, cm = "hdr" }` : " }");
+            + (hdr ? `, bitdepth = 10, cm = "hdr", sdr_eotf = "gamma22", sdr_min_luminance = ${sdrMin}, sdr_max_luminance = ${sdrMax} }` : " }");
     }
 
     // Applies a rule now, and saves it unless persist is false: the screen's
