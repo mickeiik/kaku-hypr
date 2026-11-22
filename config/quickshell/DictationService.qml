@@ -1,9 +1,10 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 
-// Speech to text with voxtype (hold Super+D, see sway/config.d/60-bindings-dictation.conf).
+// Speech to text with voxtype (hold Super+D, see hypr/conf.d/60-bindings-dictation.lua).
 // Follows the state file the voxtype daemon rewrites on every change, and while
 // listening, the microphone level (for DictationOsd.qml).
 Singleton {
@@ -19,6 +20,7 @@ Singleton {
     property var levels: new Array(historyLength).fill(0)
     property real loudest: 0 // since the last sample
     property int seconds: 0 // listening for
+    property string submap: "" // Hyprland's current one ("": the default)
 
     function cancel() {
         Quickshell.execDetached(["voxtype", "record", "cancel"]);
@@ -29,11 +31,19 @@ Singleton {
             levels = new Array(historyLength).fill(0);
             seconds = 0;
         }
-        // Safety net: if voxtype stops without its "after typing" hook, Sway would stay
-        // in a voxtype mode where the usual shortcuts do nothing
-        if (state === "idle")
-            Quickshell.execDetached(["sh", "-c",
-                "swaymsg -t get_binding_state | grep -q '\"voxtype_' && swaymsg mode default"]);
+        // Safety net: if voxtype stops without its "after typing" hook, Hyprland would
+        // stay in a voxtype submap where the usual shortcuts do nothing
+        if (state === "idle" && submap.startsWith("voxtype_"))
+            Quickshell.execDetached(["hyprctl", "dispatch", 'hl.dsp.submap("reset")']);
+    }
+
+    // submap>>NAME, empty for the default one
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "submap")
+                root.submap = event.data;
+        }
     }
 
     Process {

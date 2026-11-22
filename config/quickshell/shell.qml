@@ -1,7 +1,7 @@
 //@ pragma IconTheme Papirus-Dark
 // Needed for the tray icons' right-click menus
 //@ pragma UseQApplication
-// Sway desktop shell: one bar per screen, popup panels opened from it, and the app launcher.
+// Hyprland desktop shell: wallpaper and one bar per screen, popup panels opened from it, and the app launcher.
 import QtQuick
 import Quickshell
 import Quickshell.Io
@@ -35,6 +35,7 @@ ShellRoot {
             required property ShellScreen modelData
             readonly property var bar: barWindow
 
+            Wallpaper { screen: scope.modelData }
             Bar { id: barWindow; screen: scope.modelData }
 
             LazyLoader { active: barWindow.openPanel === "network"; NetworkPanel { bar: barWindow } }

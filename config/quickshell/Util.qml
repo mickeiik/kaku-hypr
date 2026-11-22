@@ -1,12 +1,12 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.I3
+import Quickshell.Hyprland
 
 // Small helpers shared by several components
 Singleton {
     // The screen that has focus (where the launcher and pop-ups appear)
-    readonly property var focusedScreen: Quickshell.screens.find(s => s.name === I3.focusedMonitor?.name) ?? Quickshell.screens[0]
+    readonly property var focusedScreen: Quickshell.screens.find(s => s.name === Hyprland.focusedMonitor?.name) ?? Quickshell.screens[0]
 
     function clamp01(v) {
         return Math.max(0, Math.min(1, v));

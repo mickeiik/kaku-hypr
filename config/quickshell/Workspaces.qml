@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
-import Quickshell.I3
+import Quickshell
+import Quickshell.Hyprland
 
 RowLayout {
     id: root
@@ -9,13 +10,13 @@ RowLayout {
     spacing: 0
 
     Repeater {
-        model: I3.workspaces
+        model: Hyprland.workspaces
 
         Rectangle {
             id: ws
-            required property I3Workspace modelData
+            required property HyprlandWorkspace modelData
 
-            visible: modelData.monitor?.name === root.screenName
+            visible: modelData.id > 0 && modelData.monitor?.name === root.screenName // not special ones (scratchpad)
             implicitWidth: Math.max(36, label.implicitWidth + 20)
             implicitHeight: Theme.barHeight
             color: mouse.containsMouse ? Theme.bgAlt : "transparent"
@@ -41,7 +42,8 @@ RowLayout {
                 id: mouse
                 anchors.fill: parent
                 hoverEnabled: true
-                onClicked: ws.modelData.activate()
+                // Hyprland 0.57's dispatch takes Lua (Quickshell 0.2.1's activate() sends the old form)
+                onClicked: Quickshell.execDetached(["hyprctl", "dispatch", `hl.dsp.focus({ workspace = "${ws.modelData.id}" })`])
             }
         }
     }

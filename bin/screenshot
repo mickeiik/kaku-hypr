@@ -1,0 +1,46 @@
+#!/bin/sh
+# Screenshot on Hyprland, saved to ~/Pictures/Screenshots, copied to the clipboard,
+# with a notification (opening it shows the file). Same targets as grimshot (Sway's):
+#   screenshot area      select an area (Esc cancels)
+#   screenshot active    the focused window
+#   screenshot window    click a window
+#   screenshot output    the focused screen
+#   screenshot <target> --edit   open it in swappy instead (annotate, then save or copy)
+set -eu
+target=${1:-area}
+dir="$HOME/Pictures/Screenshots"
+file="$dir/screenshot-$(date +%Y-%m-%d_%H-%M-%S).png"
+
+# Window boxes as slurp takes them: "x,y wxh"
+windows() {
+    workspaces=$(hyprctl -j monitors | jq -r '[.[].activeWorkspace.id] | join(",")')
+    hyprctl -j clients | jq -r --argjson ws "[$workspaces]" \
+        '.[] | select(.mapped and (.workspace.id as $w | $ws | index($w))) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"'
+}
+
+case $target in
+    area) geometry=$(slurp -d) || exit 1 ;;
+    active) geometry=$(hyprctl -j activewindow | jq -r 'if .at then "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])" else empty end')
+        [ -n "$geometry" ] || { notify-send -a Screenshot "No window to capture"; exit 1; } ;;
+    window) geometry=$(windows | slurp -r) || exit 1 ;;
+    output | screen) output=$(hyprctl -j monitors | jq -r '.[] | select(.focused) | .name') ;;
+    *) echo "usage: screenshot area|active|window|output [--edit]" >&2; exit 2 ;;
+esac
+
+shoot() {
+    if [ -n "${output:-}" ]; then grim -o "$output" "$@"; else grim -g "$geometry" "$@"; fi
+}
+
+if [ "${2:-}" = --edit ]; then
+    shoot - | swappy -f -
+    exit
+fi
+
+mkdir -p "$dir"
+shoot "$file"
+wl-copy --type image/png < "$file"
+# In the background: waits for a click on the notification
+(
+    action=$(notify-send -a Screenshot -i "$file" -A default=Open "Screenshot saved" "$(basename "$file") (also copied)") || true
+    [ "$action" = default ] && exec xdg-open "$file"
+) >/dev/null 2>&1 &

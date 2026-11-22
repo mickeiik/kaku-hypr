@@ -24,7 +24,7 @@ import Quickshell.Wayland
 //   wrong attempt (annoyed, then sulking at the edges);
 // - Caps Lock makes the row stand on tiptoe.
 // After a few seconds without input everything freezes (swayidle turns the screen off
-// after a minute, see sway/config.d/90-swayidle.conf).
+// after a minute, see ~/.config/swayidle/config).
 Scope {
     id: root
 

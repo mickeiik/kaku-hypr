@@ -37,7 +37,7 @@ heading() {
 }
 
 # voxtype (speech to text) isn't in Fedora's repos, so dnf doesn't update it: it comes
-# from its GitHub releases. Major version pinned (kaku-sway uses its state file, output
+# from its GitHub releases. Major version pinned (kaku-hypr uses its state file, output
 # hooks and record commands): only stable 1.x releases.
 VOXTYPE_MAJOR=1
 

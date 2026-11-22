@@ -1,7 +1,7 @@
-# kaku-sway
+# kaku-hypr
 
-A Fedora Sway desktop built with [Quickshell](https://quickshell.org): Tokyo Night colors
-and square corners everywhere (*kaku*, 角, is Japanese for "square / corner").
+A Fedora [Hyprland](https://hyprland.org) desktop built with
+[Quickshell](https://quickshell.org): Tokyo Night colors and square corners everywhere (*kaku*, 角, is Japanese for "square / corner").
 
 ![Lock screen: the squares line up as you type, sulk at a wrong password, and rush away on unlock](screenshots/lock.gif)
 
@@ -34,7 +34,8 @@ setup:
   is detected). Runs offline (NVIDIA Parakeet); your voice level shows on screen.
 - **DNS over HTTPS**: every lookup is encrypted to Mullvad (`dns.mullvad.net`),
   while `*.ts.net` names still go to Tailscale. No plaintext DNS, no other provider.
-- Low battery warnings, automatic night light (sunset to sunrise), clipboard history.
+- Low battery warnings, automatic night light (sunset to sunrise), clipboard history,
+  the wallpaper.
 
 ![Login screen](screenshots/login.gif)
 
@@ -47,16 +48,21 @@ setup:
 
 ## Install
 
-On Fedora with the [Sway spin](https://fedoraproject.org/spins/sway/):
+On Fedora (made on the [Sway spin](https://fedoraproject.org/spins/sway/), whose login
+screen runs on Sway):
 
-    git clone https://github.com/mickeiik/kaku-sway
-    cd kaku-sway
+    git clone https://github.com/mickeiik/kaku-hypr
+    cd kaku-hypr
     ./install.sh
 
-It installs the packages in [`packages.txt`](packages.txt), copies the config files
+It adds the [lionheartp/Hyprland](https://copr.fedorainfracloud.org/coprs/lionheartp/Hyprland/)
+COPR (Hyprland isn't in Fedora's own repos), installs the packages in
+[`packages.txt`](packages.txt), copies the config files
 into place (your existing ones are moved to `~/.config/kaku-backup-<date>` first), sets
 up the login screen, enables fingerprint login and lockout after 3 wrong passwords
-(faillock), and sets the GTK theme. Log out and back in afterwards.
+(faillock), and sets the GTK theme. Log out, then pick Hyprland on the login screen:
+click the session name under the password (or press F10). The login screen remembers it;
+Sway stays there too, as a fallback.
 
 It first asks whether to add speech to text (or pass `--dictation` / `--no-dictation`).
 That's voxtype, from its GitHub releases (it isn't in Fedora's), and its ~0.74 GB speech
@@ -64,7 +70,7 @@ model, loaded only while you dictate. Its updates then come with the rest, in th
 launcher's Update.
 
 The keyboard is French AZERTY: change
-`xkb_layout` in `config/sway/config.d/10-input.conf` for yours. Dates are in French
+`kb_layout` in `config/hypr/conf.d/10-input.lua` for yours. Dates are in French
 (`locale` in `config/quickshell/Theme.qml`).
 
 **AI usage**: the bar shows the subscriptions whose command-line tool is signed in
@@ -85,9 +91,11 @@ ntfy" in the browser. The server and topics are in `~/.config/kaku/ntfy.json`, t
 token in `~/.config/kaku/ntfy-token` (readable by you only; keep it out of your
 dotfiles).
 
-HDR (the display panel shows it for screens that take HDR10) needs Sway 1.12 (Fedora
-45) and its Vulkan renderer, which wlroots still calls experimental: put
-`WLR_RENDERER=vulkan` in a file in `~/.config/environment.d/` and log in again.
+**Screens**: the display panel saves what you set (on/off, scale, HDR, main screen) in
+`~/.config/hypr/conf.d/20-monitors.lua`, one `hl.monitor({...})` line per screen. To
+place screens or rotate one, edit their line there (position and rotation are kept when
+the panel changes the rest). HDR is offered for screens that take HDR10 (`bitdepth = 10,
+cm = "hdr"`).
 
 ## Keys
 
@@ -99,28 +107,32 @@ HDR (the display panel shows it for screens that take HDR10) needs Sway 1.12 (Fe
 | Super+W | close window |
 | Super+F | fullscreen |
 | Super+Shift+Space | floating on/off |
-| Super+R | resize mode |
+| Super+R | resize mode (arrows, Enter to finish) |
+| Super+E | toggle split direction |
 | Super+S / Super+Shift+S | scratchpad: show / send window there |
 | Super+1…0 / Super+Shift+1…0 | workspace / move window there (AZERTY keys work) |
 | Super+C / Super+V | copy / paste in any app, terminals included |
 | Ctrl+Super+V | clipboard history |
 | Super+D (hold) | dictate, if installed: speak, let go to type it (Esc cancels) |
 | Print / Alt+Print / Ctrl+Print | screenshot: area / window / screen |
+| Super+Shift+E | power menu (log out, restart...) |
 
-Windows tile automatically ([autotiling](https://github.com/nwg-piotr/autotiling)).
+Windows tile automatically: each new one splits the focused window along its longer side
+(Hyprland's dwindle layout). The launcher's Keyboard shortcuts list shows them all.
 
 ## Layout
 
 | Path | |
 | --- | --- |
-| `config/sway/` | Sway config; `config.d/` files replace Fedora's drop-ins of the same name |
+| `config/hypr/` | Hyprland config, in Lua (Hyprland 0.57+): `hyprland.lua`, then `conf.d/*.lua` in name order |
 | `config/quickshell/` | the shell (`shell.qml` is the entry point) |
+| `config/swayidle/` | lock and screen off when idle |
 | `config/sddm-theme/` | login screen |
 | `config/voxtype/` | speech to text (model, language) |
 | `config/gtk-3.0`, `gtk-4.0`, `foot`, `micro`, `swappy` | app theming |
 | `config/dns/` | system-wide DNS over HTTPS to Mullvad (dnscrypt-proxy behind systemd-resolved) |
 | `config/systemd/` | runs voxtype's Parakeet build; starts dnscrypt-proxy after the network |
-| `bin/` | `lock-screen` (Quickshell lock with swaylock fallback), `launcher-pkg` (package browsers, voxtype updates), `voxtype-onnx` (voxtype's Parakeet build) |
+| `bin/` | `lock-screen` (Quickshell lock with swaylock fallback), `screenshot` (grim + slurp), `launcher-pkg` (package browsers, voxtype updates), `voxtype-onnx` (voxtype's Parakeet build) |
 
 ## License
 

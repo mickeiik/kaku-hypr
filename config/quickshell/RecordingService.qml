@@ -1,7 +1,7 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.I3
+import Quickshell.Hyprland
 import Quickshell.Io
 
 // Screen recording with wf-recorder, into ~/Videos/Recordings
@@ -30,7 +30,7 @@ Singleton {
             else
                 exec wf-recorder -o "$3" -f "$1"
             fi
-        `, "record", file, what, I3.focusedMonitor?.name ?? ""]);
+        `, "record", file, what, Hyprland.focusedMonitor?.name ?? ""]);
         seconds = 0;
         started = new Date();
     }

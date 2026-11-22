@@ -1,10 +1,10 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.I3
+import Quickshell.Hyprland
 import Quickshell.Io
 
-// Active keyboard layout (from Sway), and switching to the next one. Announces
+// Active keyboard layout (from Hyprland), and switching to the next one. Announces
 // switches (Alt+Shift) for the on-screen indicator.
 Singleton {
     id: root
@@ -13,7 +13,7 @@ Singleton {
 
     signal switched()
 
-    // Sway sends one event per keyboard device: only a real change counts, and not
+    // Hyprland sends one event per keyboard device: only a real change counts, and not
     // the first read at startup
     function update(layout) {
         if (layout === name)
@@ -25,27 +25,37 @@ Singleton {
     }
 
     function next() {
-        Quickshell.execDetached(["swaymsg", "input", "type:keyboard", "xkb_switch_layout", "next"]);
+        Quickshell.execDetached(["hyprctl", "switchxkblayout", "all", "next"]);
     }
 
     Process {
         running: true
-        command: ["swaymsg", "-r", "-t", "get_inputs"]
+        command: ["hyprctl", "-j", "devices"]
         stdout: StdioCollector {
             onStreamFinished: {
-                const kb = JSON.parse(text).find(i => i.type === "keyboard" && i.xkb_active_layout_name);
-                if (kb)
-                    root.update(kb.xkb_active_layout_name);
+                let keyboards = [];
+                try {
+                    keyboards = JSON.parse(text).keyboards ?? [];
+                } catch (e) {
+                    return; // Hyprland not answering
+                }
+                const kb = keyboards.find(k => k.main) ?? keyboards[0];
+                if (kb?.active_keymap)
+                    root.update(kb.active_keymap);
             }
         }
     }
 
-    I3IpcListener {
-        subscriptions: ["input"]
-        onIpcEvent: event => {
-            const input = JSON.parse(event.data).input;
-            if (input?.type === "keyboard" && input.xkb_active_layout_name)
-                root.update(input.xkb_active_layout_name);
+    // activelayout>>KEYBOARDNAME,LAYOUTNAME (the keyboard's name has no comma)
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name !== "activelayout")
+                return;
+            const data = event.data;
+            const layout = data.slice(data.indexOf(",") + 1);
+            if (layout && layout !== "error")
+                root.update(layout);
         }
     }
 }

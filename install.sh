@@ -1,5 +1,6 @@
 #!/bin/bash
-# Installs kaku-sway on Fedora Sway: packages, then the config files (existing ones
+# Installs kaku-hypr on Fedora: Hyprland (from the lionheartp/Hyprland COPR) and the
+# packages, then the config files (existing ones
 # are moved to ~/.config/kaku-backup-<date> first), then the system parts (login
 # theme, fingerprint + lockout rules, GTK look). Asks for sudo. Log out and back in after.
 # Speech to text (voxtype) is optional: asked at the start, or --dictation / --no-dictation.
@@ -37,11 +38,13 @@ place() {
     cp -r "$src" "$dest"
 }
 
+step "Hyprland's COPR (lionheartp/Hyprland: Hyprland isn't in Fedora's repos)"
+dnf copr list 2>/dev/null | grep -qi 'lionheartp/Hyprland' || sudo dnf copr enable -y lionheartp/Hyprland
+
 step "Fedora packages"
 sudo dnf install -y $(sed 's/#.*//' "$here/packages.txt" | grep -v '^\s*$')
 # Replaced by the Quickshell launcher and notifications
 sudo dnf remove -y rofi dunst || true
-pipx install autotiling || pipx upgrade autotiling
 
 if [ "$dictation" = yes ]; then
     step "Speech to text (voxtype, not in Fedora's repos: newest 1.x RPM from GitHub)"
@@ -50,7 +53,7 @@ if [ "$dictation" = yes ]; then
 fi
 
 step "Config files (old ones go to $backup)"
-for d in sway quickshell sddm-theme gtk-3.0 gtk-4.0 foot micro swappy voxtype; do
+for d in hypr quickshell swayidle sddm-theme gtk-3.0 gtk-4.0 foot micro swappy voxtype; do
     place "$here/config/$d" ~/.config/"$d"
 done
 for f in "$here"/bin/*; do
@@ -117,7 +120,7 @@ if command -v tailscale >/dev/null; then
     # which Tailscale only set while it handled DNS
     suffix=$(tailscale status --json 2>/dev/null | jq -r '.MagicDNSSuffix // empty' || true)
     if [ -n "$suffix" ]; then
-        printf '# kaku-sway: short tailnet names (pve -> pve.%s)\n[Resolve]\nDomains=%s\n' "$suffix" "$suffix" |
+        printf '# kaku-hypr: short tailnet names (pve -> pve.%s)\n[Resolve]\nDomains=%s\n' "$suffix" "$suffix" |
             sudo tee /etc/systemd/resolved.conf.d/kaku-tailnet.conf >/dev/null
         sudo systemctl restart systemd-resolved
     fi
@@ -136,4 +139,5 @@ gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 
 step "Done"
 [ -d "$backup" ] && echo "Your previous files: $backup"
-echo "Log out and back in to start kaku-sway."
+echo "Log out, then pick Hyprland at the login screen (click the session name under"
+echo "the password, or F10) to start kaku-hypr. Sway stays there as a fallback."

@@ -27,7 +27,7 @@ Singleton {
     }
 
     // A launcher-pkg command in a floating terminal (see ~/.local/bin/launcher-pkg;
-    // the "launcher-term" app id makes Sway float it). Here because both this service
+    // the "launcher-term" app id makes Hyprland float it). Here because both this service
     // (Update) and the launcher's Install/Remove/Update menus use it.
     function terminal(title, args) {
         return ["foot", "--app-id=launcher-term", "--title=" + title, "-e",

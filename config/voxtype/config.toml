@@ -1,5 +1,5 @@
 # Speech to text (https://github.com/peteonrails/voxtype). Hold Super+D to dictate:
-# the key is bound in ~/.config/sway/config.d/60-bindings-dictation.conf, and the bar
+# the key is bound in ~/.config/hypr/conf.d/60-bindings-dictation.lua, and the bar
 # shows when it's listening. Full list of options: /usr/share/doc/voxtype or
 # `voxtype configure`. After changes: systemctl --user restart voxtype
 
@@ -12,7 +12,7 @@ engine = "parakeet"
 state_file = "auto"
 
 [hotkey]
-# Sway handles the key
+# Hyprland handles the key
 enabled = false
 
 [audio]
@@ -31,11 +31,11 @@ on_demand_loading = true
 [output]
 mode = "type"
 fallback_to_clipboard = true
-# Sway modes from 60-bindings-dictation.conf: release keys to stop while listening,
+# Hyprland submaps from 60-bindings-dictation.lua: release keys to stop while listening,
 # and held modifier keys ignored while the text is typed
-pre_recording_command = "swaymsg mode voxtype_recording"
-pre_output_command = "swaymsg mode voxtype_suppress"
-post_output_command = "swaymsg mode default"
+pre_recording_command = "hyprctl dispatch 'hl.dsp.submap(\"voxtype_recording\")'"
+pre_output_command = "hyprctl dispatch 'hl.dsp.submap(\"voxtype_suppress\")'"
+post_output_command = "hyprctl dispatch 'hl.dsp.submap(\"reset\")'"
 
 [output.notification]
 on_recording_start = false

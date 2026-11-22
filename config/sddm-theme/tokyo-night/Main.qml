@@ -8,6 +8,8 @@ import QtQuick.Layouts
 //
 // Logs in the last user (SDDM remembers it; on a first boot, the first account).
 // Clicking the name lets you type another one. Password only: see the README.
+// The session (Hyprland, Sway...) is the last one used; clicking its name below, or F10,
+// switches to the next one.
 Rectangle {
     id: root
 
@@ -25,6 +27,8 @@ Rectangle {
     readonly property var locale: Qt.locale("fr_FR")
 
     property string user: userModel.lastUser
+    property int session: sessionModel.lastIndex
+    property var sessionNames: [] // sessionModel's names, by index
     property string password: ""
     property string state: "idle" // idle, checking, sad, worried, unlocking
     property string message: ""
@@ -41,7 +45,7 @@ Rectangle {
     // SDDM loads a separate copy of this file on each screen, and only one of them gets
     // the keyboard. The copies share `config` though, so the login state is mirrored
     // through it: every screen shows the typing, whichever one receives it.
-    readonly property var shared: ["user", "password", "state", "message", "redFlash", "failures"]
+    readonly property var shared: ["user", "password", "state", "message", "redFlash", "failures", "session"]
     Component.onCompleted: {
         for (const key of shared) {
             const value = config["shared_" + key];
@@ -57,6 +61,7 @@ Rectangle {
         }
     }
     onUserChanged: config.shared_user = user
+    onSessionChanged: config.shared_session = session
     onStateChanged: config.shared_state = state
     onMessageChanged: config.shared_message = message
     onRedFlashChanged: config.shared_redFlash = redFlash
@@ -82,7 +87,7 @@ Rectangle {
             return;
         state = "checking";
         message = "";
-        sddm.login(user, password, sessionModel.lastIndex);
+        sddm.login(user, password, session);
     }
 
     function wrong(text) {
@@ -115,6 +120,24 @@ Rectangle {
         }
     }
     property string pamNotice: ""
+
+    function nextSession() {
+        if (sessionNames.length > 1)
+            session = (session + 1) % sessionNames.length;
+    }
+
+    Repeater {
+        model: sessionModel
+        Item {
+            required property int index
+            required property string name
+            Component.onCompleted: {
+                const names = root.sessionNames.slice();
+                names[index] = name;
+                root.sessionNames = names;
+            }
+        }
+    }
 
     // First boot: no last user yet, take the first account
     Repeater {
@@ -178,6 +201,12 @@ Rectangle {
         onTextChanged: root.password = text
         onAccepted: root.submit()
         Keys.onEscapePressed: root.password = ""
+        Keys.onPressed: event => {
+            if (event.key === Qt.Key_F10) {
+                root.nextSession();
+                event.accepted = true;
+            }
+        }
         Component.onCompleted: forceActiveFocus()
     }
 
@@ -538,7 +567,8 @@ Rectangle {
         }
 
         // Keyboard layout. Fixed here: SDDM can't switch layouts on Wayland, so this
-        // is the system one (localectl), set in theme.conf to match
+        // is the system one (localectl), set in theme.conf to match. Then the session:
+        // a click (or F10) switches to the next one.
         Row {
             Layout.alignment: Qt.AlignHCenter
             spacing: 6
@@ -554,6 +584,32 @@ Rectangle {
                 text: config.keyboardLayout || "French"
                 color: root.muted
                 font.pixelSize: root.fontSize - 3
+            }
+
+            Item { width: 12; height: 1 }
+
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "\uf390"
+                color: sessionMouse.containsMouse ? root.accent : root.muted
+                font.family: root.iconFont
+                font.styleName: "Solid"
+                font.pixelSize: root.fontSize - 4
+            }
+            Label {
+                text: root.sessionNames[root.session] ?? ""
+                color: sessionMouse.containsMouse ? root.accent : root.muted
+                font.pixelSize: root.fontSize - 3
+
+                MouseArea {
+                    id: sessionMouse
+                    anchors.fill: parent
+                    anchors.margins: -6
+                    hoverEnabled: true
+                    enabled: root.sessionNames.length > 1
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.nextSession()
+                }
             }
         }
     }

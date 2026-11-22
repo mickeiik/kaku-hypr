@@ -1,11 +1,11 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.I3
+import Quickshell.Hyprland
 import Quickshell.Io
 
 // Brightness of each screen, shared by the bar, the display panel and the brightness
-// keys (their Sway binding calls `qs ipc call brightness step 1` / `-1`, which also
+// keys (their Hyprland binding calls `qs ipc call brightness step 1` / `-1`, which also
 // shows the on-screen indicator, see Osd.qml).
 //   built-in screen (eDP...)  its backlight, through brightnessctl
 //   monitors                  DDC/CI, through ddcutil (most monitors have it; some
@@ -176,7 +176,7 @@ Singleton {
             const now = Date.now();
             const held = now - root.lastKey < 350;
             root.lastKey = now;
-            const focused = I3.focusedMonitor?.name ?? "";
+            const focused = Hyprland.focusedMonitor?.name ?? "";
             const name = root.has(focused) ? focused : Quickshell.screens.map(s => s.name).find(n => root.has(n));
             if (name)
                 root.step(name, steps, held ? 10 : 5);

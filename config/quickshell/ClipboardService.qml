@@ -3,8 +3,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// Clipboard history, kept by cliphist (Fedora package; Sway starts
-// `wl-paste --watch cliphist store`, see sway/config.d/80-clipboard.conf).
+// Clipboard history, kept by cliphist (Fedora package; Hyprland starts
+// `wl-paste --watch cliphist store`, see hypr/conf.d/80-clipboard.lua).
 // Read when the launcher's Clipboard menu opens.
 Singleton {
     id: root

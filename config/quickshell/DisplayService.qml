@@ -1,28 +1,33 @@
 pragma Singleton
 import QtQuick
 import Quickshell
-import Quickshell.I3
+import Quickshell.Hyprland
 import Quickshell.Io
 
-// The screens as Sway sees them, turned-off ones included (swaymsg -t get_outputs):
+// The screens as Hyprland sees them, turned-off ones included (hyprctl monitors all):
 // on/off, scale, HDR and the main screen, set from the display panel. They're also
-// written to ~/.config/sway/config.d/20-outputs.conf (not synced: it's per machine),
-// so they survive a restart.
+// written to ~/.config/hypr/conf.d/20-monitors.lua (not synced: it's per machine),
+// so they survive a restart: one hl.monitor({...}) line per screen, rebuilt from what the
+// screen has now (mode, position, scale, rotation, HDR), so a layout written by hand
+// in that file is kept. A turned-off screen's last rule is kept in a "-- on: " comment,
+// to turn it back on the way it was.
 // One screen always stays on: the last one can't be turned off, and if none is on for
 // a few seconds (the screen left on was unplugged, or a DisplayPort screen dropped out
 // while asleep) the others are turned on for now, not saved, and back off once a
 // screen that was on returns. shell.qml creates this from the start for that.
 //
 // The main screen is where workspace 1 is and what has focus at login (the launcher,
-// notifications and indicators follow the focused screen). Sway has no "primary".
+// notifications and indicators follow the focused screen).
 //
-// HDR (Sway 1.12+) is offered for screens whose EDID says they take HDR10, and needs
-// Sway's Vulkan renderer (WLR_RENDERER=vulkan at login): when Sway refuses it,
-// hdrRefused names that screen, for the panel to say so.
+// HDR is offered for screens whose EDID says they take HDR10 (bitdepth = 10,
+// cm = "hdr"). When Hyprland doesn't turn it on, hdrRefused names that screen, for the
+// panel to say so.
 Singleton {
     id: root
 
-    property var outputs: [] // get_outputs objects: name, active, current_mode, scale, hdr...
+    // One object per screen: name, active, model, current_mode { width, height,
+    // refresh (mHz) }, scale, hdr, and hypr (hyprctl's own object)
+    property var outputs: []
     readonly property int activeCount: outputs.filter(o => o.active).length
     property var hdrCapable: [] // screen names
     property string hdrRefused: ""
@@ -31,56 +36,104 @@ Singleton {
 
     property var fallbackOn: [] // screens turned on only because none was on
 
+    readonly property string file: "~/.config/hypr/conf.d/20-monitors.lua"
+
     function setEnabled(name, on) {
         if (!on && activeCount <= 1)
             return;
         fallbackOn = fallbackOn.filter(n => n !== name); // the user's choice wins
-        apply(name, on ? "enable" : "disable");
+        on ? enable(name) : disable(name);
     }
     function setScale(name, scale) {
-        apply(name, "scale", String(scale));
+        apply(name, { scale: scale });
+    }
+    function setHdr(name, on) {
+        hdrRefused = "";
+        hdrAsked = on ? name : "";
+        apply(name, { hdr: on });
+        if (on)
+            hdrCheck.restart();
     }
     // Workspace 1 moves there now (and is shown); at login it's put there and focused
     function setPrimary(name) {
         primary = name;
         Quickshell.execDetached(["sh", "-c", `
-            swaymsg -q "workspace 1 output $1"
-            swaymsg -q "workspace number 1; move workspace to output $1"
-            f=~/.config/sway/config.d/20-outputs.conf
+            hyprctl -q eval "hl.workspace_rule({ workspace = \\"1\\", monitor = \\"$1\\", default = true })"
+            hyprctl -q dispatch "hl.dsp.workspace.move({ workspace = \\"1\\", monitor = \\"$1\\" })"
+            hyprctl -q dispatch 'hl.dsp.focus({ workspace = "1" })'
+            f=${file}
             touch "$f"
-            sed -i '/^workspace 1 output /d; /^exec swaymsg -q focus output /d' "$f"
-            printf 'workspace 1 output %s\nexec swaymsg -q focus output %s\n' "$1" "$1" >> "$f"
+            sed -i '/^hl.workspace_rule({ workspace = "1",/d; /^hl.on("hyprland.start", function() hl.dispatch(hl.dsp.focus({ monitor = /d' "$f"
+            printf '%s\\n' "hl.workspace_rule({ workspace = \\"1\\", monitor = \\"$1\\", default = true })" \\
+                "hl.on(\\"hyprland.start\\", function() hl.dispatch(hl.dsp.focus({ monitor = \\"$1\\" })) end)" >> "$f"
         `, "main-screen", name]);
         rereadAfter.restart();
     }
-    function setHdr(name, on) {
-        hdrRefused = "";
-        hdrAsked = on ? name : "";
-        apply(name, "hdr", on ? "on" : "off");
-        if (on)
-            hdrCheck.restart();
+
+    // The monitor rule (a Lua table for hl.monitor) of a screen that's on, with
+    // changes ({ scale, hdr })
+    function ruleFor(o, change) {
+        const h = o.hypr;
+        const scale = change.scale ?? o.scale;
+        const hdr = change.hdr ?? o.hdr;
+        return `{ output = "${o.name}", mode = "${h.width}x${h.height}@${h.refreshRate.toFixed(3)}", `
+            + `position = "${h.x}x${h.y}", scale = ${scale}, transform = ${h.transform}`
+            + (hdr ? `, bitdepth = 10, cm = "hdr" }` : " }");
     }
 
-    // swaymsg output <name> <setting...>, and saved unless persist is false (an output's
-    // line for that setting replaced; "enable" just drops its "disable" line).
-    // A screen is focused before being turned off: Sway deletes its workspace if it's
-    // empty, and Quickshell 0.2.1 crashes on that unless the workspace has focus (fixed
-    // upstream in d4c9297, after the version Fedora has).
-    function apply(name, setting, value, persist = true) {
+    // Applies a rule now, and saves it unless persist is false: the screen's
+    // hl.monitor line is replaced. The "-- on: " comment keeps the rule of a turned-off
+    // screen (written by disable(), read by enable()).
+    function run(name, rule, persist, keep) {
         Quickshell.execDetached(["sh", "-c", `
-            [ "$2" = disable ] && swaymsg -q focus output "$1"
-            swaymsg output "$1" $2 $3
-            [ "$4" = 1 ] || exit 0
-            f=~/.config/sway/config.d/20-outputs.conf
+            hyprctl -q eval "hl.monitor($2)"
+            [ "$3" = 1 ] || exit 0
+            f=${file}
             touch "$f"
-            case $2 in
-                enable|disable) sed -i "/^output $1 disable$/d" "$f" ;;
-                *) sed -i "/^output $1 $2 /d" "$f" ;;
-            esac
-            [ "$2" = enable ] || echo "output $1 $2\${3:+ $3}" >> "$f"
-        `, "display", name, setting, value ?? "", persist ? "1" : "0"]);
+            sed -i "/^hl.monitor({ output = \\"$1\\",/d; /^-- on: { output = \\"$1\\",/d" "$f"
+            [ -z "$4" ] || echo "-- on: $4" >> "$f"
+            echo "hl.monitor($2)" >> "$f"
+        `, "display", name, rule, persist ? "1" : "0", keep ?? ""]);
         rereadAfter.restart();
     }
+    function apply(name, change) {
+        const o = outputs.find(o => o.name === name);
+        if (o?.active)
+            run(name, ruleFor(o, change), true);
+    }
+    function disable(name, persist = true) {
+        const o = outputs.find(o => o.name === name);
+        if (o?.active)
+            run(name, `{ output = "${name}", disabled = true }`, persist, persist ? ruleFor(o, {}) : "");
+    }
+    // Back the way it was ("-- on: " rule), or Hyprland's choice of mode and place
+    function enable(name, persist = true) {
+        Quickshell.execDetached(["sh", "-c", `
+            f=${file}
+            rule=$(sed -n "s/^-- on: \\({ output = \\"$1\\",.*\\)/\\1/p" "$f" 2>/dev/null | tail -n 1)
+            [ -n "$rule" ] || rule="{ output = \\"$1\\", mode = \\"preferred\\", position = \\"auto\\", scale = 1 }"
+            hyprctl -q eval "hl.monitor($rule)"
+            [ "$2" = 1 ] || exit 0
+            touch "$f"
+            sed -i "/^hl.monitor({ output = \\"$1\\",/d; /^-- on: { output = \\"$1\\",/d" "$f"
+            echo "hl.monitor($rule)" >> "$f"
+        `, "display", name, persist ? "1" : "0"]);
+        rereadAfter.restart();
+    }
+
+    // hyprctl's monitor object, in the shape the panel uses
+    function fromHypr(h) {
+        return {
+            name: h.name,
+            active: !h.disabled,
+            model: h.model || h.description,
+            current_mode: { width: h.width, height: h.height, refresh: Math.round(h.refreshRate * 1000) },
+            scale: h.scale,
+            hdr: h.colorManagementPreset === "hdr" || h.colorManagementPreset === "hdredid",
+            hypr: h
+        };
+    }
+
     function refresh() {
         if (!reader.running)
             reader.running = true;
@@ -97,14 +150,14 @@ Singleton {
         }
     }
     Connections {
-        target: I3
+        target: Hyprland
         function onRawEvent(event) {
-            if (event.type === "output")
+            if (/^monitor(added|removed)|^configreloaded$/.test(event.name))
                 root.refresh();
         }
     }
 
-    // swaymsg runs in the background: re-read once it's applied
+    // hyprctl runs in the background: re-read once it's applied
     Timer {
         id: rereadAfter
         interval: 300
@@ -122,7 +175,7 @@ Singleton {
                 return;
             root.fallbackOn = list.map(o => o.name);
             for (const o of list)
-                root.apply(o.name, "enable", "", false);
+                root.enable(o.name, false);
         }
     }
 
@@ -141,12 +194,12 @@ Singleton {
     Process {
         id: reader
         running: true
-        command: ["swaymsg", "-r", "-t", "get_outputs"]
+        command: ["hyprctl", "-j", "monitors", "all"]
         stdout: StdioCollector {
             onStreamFinished: {
                 let list;
                 try {
-                    list = JSON.parse(text);
+                    list = JSON.parse(text).map(h => root.fromHypr(h));
                 } catch (e) {
                     return;
                 }
@@ -161,12 +214,12 @@ Singleton {
                     if (back && root.fallbackOn.length > 0) {
                         for (const n of root.fallbackOn) {
                             if (list.some(o => o.name === n && o.active))
-                                root.apply(n, "disable", "", false);
+                                root.disable(n, false);
                         }
                         root.fallbackOn = [];
                     }
                 }
-                I3.refreshMonitors();
+                Hyprland.refreshMonitors();
             }
         }
     }
@@ -174,7 +227,7 @@ Singleton {
     // The saved main screen
     Process {
         running: true
-        command: ["sh", "-c", "sed -n 's/^workspace 1 output //p' ~/.config/sway/config.d/20-outputs.conf 2>/dev/null"]
+        command: ["sh", "-c", `sed -n 's/^hl.workspace_rule({ workspace = "1", monitor = "\\([^"]*\\)".*/\\1/p' ~/.config/hypr/conf.d/20-monitors.lua 2>/dev/null`]
         stdout: StdioCollector {
             onStreamFinished: root.primary = text.trim()
         }

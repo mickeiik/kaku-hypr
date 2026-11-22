@@ -1,4 +1,4 @@
-# kaku-sway: DNS over HTTPS to Mullvad (https://dns.mullvad.net/dns-query).
+# kaku-hypr: DNS over HTTPS to Mullvad (https://dns.mullvad.net/dns-query).
 # systemd-resolved forwards every lookup here (see kaku-dns.conf); this sends it
 # encrypted to Mullvad. Installed as /etc/dnscrypt-proxy/dnscrypt-proxy.toml.
 listen_addresses = ['127.0.2.1:53']

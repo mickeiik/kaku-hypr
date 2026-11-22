@@ -200,7 +200,7 @@ Popout {
 
                 Label {
                     visible: screen.active && DisplayService.hdrRefused === screen.name
-                    text: "Sway couldn't turn HDR on: it needs its Vulkan renderer (WLR_RENDERER=vulkan at login)."
+                    text: "Hyprland couldn't turn HDR on for this screen."
                     color: Theme.yellow
                     font.pixelSize: Theme.fontSize - 2
                     wrapMode: Text.Wrap

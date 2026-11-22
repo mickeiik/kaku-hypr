@@ -177,7 +177,7 @@ Singleton {
         signInProc.command = ["sh", "-c", `
             IFS= read -r user; IFS= read -r pass
             auth=$(printf '%s:%s' "$user" "$pass" | base64 -w0)
-            body=$(jq -nc --arg l "kaku-sway · $(uname -n)" '{label: $l}')
+            body=$(jq -nc --arg l "kaku-hypr · $(uname -n)" '{label: $l}')
             out=$(printf 'Authorization: Basic %s\n' "$auth" | curl -sS -m 10 -H @- -H 'Content-Type: application/json' \
                 -X POST -d "$body" -w '\n%{http_code}' "$2/v1/account/token") || { echo 000; exit 0; }
             status=$(printf '%s' "$out" | tail -n 1)

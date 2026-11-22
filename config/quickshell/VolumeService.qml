@@ -4,12 +4,13 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pipewire
 
-// Default speaker and microphone, shared by the bar and the volume keys (their Sway
+// Default speaker and microphone, shared by the bar and the volume keys (their Hyprland
 // bindings call `qs ipc call volume hold 1` / `-1` on press and `release` on release,
 // `mute`, `micMute`).
 //
-// Held keys are repeated here, not by Sway: Sway stops repeating a key at the next key
-// event of any kind, so pressing Down before Up was fully released gave a single step.
+// Held keys are repeated here, not by the compositor: Sway stopped repeating a key at
+// the next key event of any kind, so pressing Down before Up was fully released gave a
+// single step; Quickshell's own repeat doesn't depend on that.
 Singleton {
     id: root
 

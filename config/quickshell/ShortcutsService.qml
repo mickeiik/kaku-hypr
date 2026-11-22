@@ -1,10 +1,12 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 
-// Keyboard shortcuts read from the Sway config (same files and layering as Sway),
-// with readable descriptions.
+// Keyboard shortcuts as Hyprland has them (`hyprctl binds -j`), named by their
+// description (~/.config/hypr/hyprland.lua and conf.d/). Binds without one are left
+// out, except media keys, named after the key. Read again when the config reloads.
 Singleton {
     id: root
 
@@ -15,32 +17,6 @@ Singleton {
             reader.running = true;
     }
 
-    // Readable descriptions for Sway commands (first match wins)
-    readonly property var commandNames: [
-        [/launcher toggle/, "App launcher"],
-        [/browser openPrivate/, "Private browser window"],
-        [/browser open/, "Web browser"],
-        [/^exec foot$/, "Terminal"],
-        [/^kill$/, "Close window"],
-        [/^fullscreen/, "Fullscreen"],
-        [/^floating toggle/, "Float / tile window"],
-        [/^focus parent/, "Select parent container"],
-        [/^focus (left|right|up|down)/, "Focus window $1"],
-        [/^move (left|right|up|down)/, "Move window $1"],
-        [/^splith/, "Split horizontally"],
-        [/^splitv/, "Split vertically"],
-        [/^layout toggle split/, "Toggle split direction"],
-        [/^move scratchpad/, "Move to scratchpad"],
-        [/^scratchpad show/, "Show scratchpad"],
-        [/^reload/, "Reload Sway config"],
-        [/swaymsg exit|^exit/, "Log out"],
-        [/^mode "?resize/, "Resize mode (arrows, Enter to finish)"],
-        [/grimshot.*\boutput\b/, "Screenshot of the screen"],
-        [/grimshot.*\bactive\b/, "Screenshot of the window"],
-        [/grimshot.*\barea\b/, "Screenshot of an area"],
-        [/voxtype record/, "Dictate (hold, speak, let go)"]
-    ]
-
     // Media keys get their name from the key itself
     readonly property var keyNames: ({
         XF86AudioRaiseVolume: "Volume up", XF86AudioLowerVolume: "Volume down", XF86AudioMute: "Mute",
@@ -49,90 +25,37 @@ Singleton {
         XF86AudioStop: "Stop"
     })
 
-    function prettyKeys(keys) {
-        const names = { Mod4: "Super", Mod1: "Alt", Control: "Ctrl", Return: "Enter", space: "Space",
-                        Left: "←", Right: "→", Up: "↑", Down: "↓", minus: "-" };
-        return keys.split("+").map(k => names[k] ?? (k.length === 1 ? k.toUpperCase() : k)).join("+");
-    }
+    // Modifier bits of hyprctl's modmask, in display order
+    readonly property var modBits: [[64, "Super"], [4, "Ctrl"], [8, "Alt"], [1, "Shift"]]
 
-    function describe(keys, command) {
-        const media = keys.split("+").find(k => keyNames[k]);
-        if (media)
-            return keyNames[media];
-        for (const [pattern, name] of commandNames) {
-            const m = command.match(pattern);
-            if (m)
-                return name.replace("$1", m[1] ?? "");
-        }
-        return command.replace(/^exec\s+/, "").slice(0, 40);
+    function prettyKeys(modmask, key) {
+        const names = { Return: "Enter", space: "Space", Print: "Print",
+                        Left: "←", Right: "→", Up: "↑", Down: "↓", minus: "-" };
+        const mods = modBits.filter(([bit]) => modmask & bit).map(([, name]) => name);
+        return mods.concat([names[key] ?? (key.length === 1 ? key.toUpperCase() : key)]).join("+");
     }
 
     function parse(text) {
-        const vars = {};
-        const found = []; // [keys, command]
-        let block = null; // inside "bindsym {" / "bindcode {"
-        let skipDepth = 0; // inside a mode "..." { } block
-        // Lines ending in "\" continue on the next one
-        for (let line of text.replace(/\\\n\s*/g, " ").split("\n")) {
-            line = line.trim();
-            if (!line || line.startsWith("#"))
-                continue;
-            if (skipDepth > 0) {
-                if (line.endsWith("{")) skipDepth++;
-                if (line === "}") skipDepth--;
-                continue;
-            }
-            if (/^mode\s.*\{$/.test(line)) {
-                skipDepth = 1;
-                continue;
-            }
-            let m = line.match(/^set\s+(\$\S+)\s+(.+)$/);
-            if (m) {
-                vars[m[1]] = m[2];
-                continue;
-            }
-            if (block) {
-                if (line === "}") {
-                    block = null;
-                    continue;
-                }
-                m = line.match(/^(\S+)\s+(.+)$/);
-                if (m)
-                    found.push([block, m[1], m[2]]);
-                continue;
-            }
-            m = line.match(/^(bindsym|bindcode)(?:\s+--\S+)*\s*\{$/);
-            if (m) {
-                block = m[1];
-                continue;
-            }
-            m = line.match(/^(bindsym|bindcode)(?:\s+--\S+)*\s+(\S+)\s+(.+)$/);
-            if (m)
-                found.push([m[1], m[2], m[3]]);
+        let binds;
+        try {
+            binds = JSON.parse(text);
+        } catch (e) {
+            return; // Hyprland not answering
         }
-
-        // Expand $variables (longest names first, so $mod doesn't eat $mode)
-        const names = Object.keys(vars).sort((a, b) => b.length - a.length);
-        const expand = s => {
-            for (let pass = 0; pass < 3; pass++)
-                for (const n of names)
-                    s = s.split(n).join(vars[n]);
-            return s;
-        };
-
         const byDescription = new Map();
-        for (const [type, rawKeys, rawCommand] of found) {
-            let keys = expand(rawKeys);
-            const command = expand(rawCommand);
-            // Workspace shortcuts are summarised in one line each
-            const workspace = command.match(/^(move container to )?workspace number \d+/);
-            if (workspace)
-                keys = keys.replace(/\+\d+$/, "+1…0");
-            else if (type === "bindcode")
+        for (const b of binds) {
+            if (b.submap !== "" || b.release || b.mouse)
+                continue;
+            let key = b.key;
+            // Workspace shortcuts (key codes of the number row) are summarised in one line each
+            if (!key && b.keycode >= 10 && b.keycode <= 19 && /workspace 1–10/.test(b.description))
+                key = "1…0";
+            if (!key)
                 continue; // other raw key codes aren't readable
-            const description = !workspace ? describe(keys, command)
-                : workspace[1] ? "Move window to workspace 1–10" : "Go to workspace 1–10";
-            const pretty = prettyKeys(keys);
+            const description = b.has_description ? b.description : keyNames[key];
+            if (!description)
+                continue;
+            const pretty = prettyKeys(b.modmask, key);
             const entry = byDescription.get(description);
             if (!entry)
                 byDescription.set(description, { description: description, keys: [pretty] });
@@ -144,17 +67,17 @@ Singleton {
 
     Component.onCompleted: refresh()
 
+    Connections {
+        target: Hyprland
+        function onRawEvent(event) {
+            if (event.name === "configreloaded")
+                root.refresh();
+        }
+    }
+
     Process {
         id: reader
-        // Fedora's helper that Sway's own config uses to layer the config.d folders
-        command: ["sh", "-c", `
-            cat ~/.config/sway/config
-            # It writes a file of "include '<path>'" lines, in Sway's order
-            list=$(/usr/libexec/sway/layered-include "/usr/share/sway/config.d/*.conf" "/etc/sway/config.d/*.conf" "$HOME/.config/sway/config.d/*.conf")
-            sed -n "s/^include '\\(.*\\)'$/\\1/p" "$list" | while read -r f; do
-                cat "$f"; echo
-            done
-        `]
+        command: ["hyprctl", "-j", "binds"]
         stdout: StdioCollector {
             onStreamFinished: root.parse(text)
         }

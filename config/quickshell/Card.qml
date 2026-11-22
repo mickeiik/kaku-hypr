@@ -4,7 +4,7 @@ import QtQuick
 // swallowed, so they don't reach the "click outside to close" area behind it.
 Rectangle {
     color: Theme.bg
-    // Same as Sway's focused window border
+    // Same as Hyprland's focused window border
     border.color: Theme.accent
     border.width: 2
 

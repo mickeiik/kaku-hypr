@@ -28,10 +28,10 @@ PanelWindow {
         return () => Quickshell.execDetached(command);
     }
 
-    // Screenshot with grimshot: saved to ~/Pictures/Screenshots and copied to the clipboard
-    // (same command as the Print key bindings in sway/config.d/60-bindings-screenshot.conf)
+    // Screenshot: saved to ~/Pictures/Screenshots and copied to the clipboard
+    // (same command as the Print key bindings in hypr/conf.d/60-bindings-screenshot.lua)
     function screenshot(target) {
-        return exec(["sh", "-c", 'sleep 0.3; exec grimshot --notify savecopy "$1" "$HOME/Pictures/Screenshots/screenshot-$(date +%Y-%m-%d_%H-%M-%S).png"', "screenshot", target]);
+        return exec(["sh", "-c", 'sleep 0.3; exec ~/.local/bin/screenshot "$1"', "screenshot", target]);
     }
 
     function terminal(title, args) {
@@ -58,7 +58,7 @@ PanelWindow {
         { name: "Screenshot of a window", icon: "org.gnome.Screenshot", keywords: "screenshot capture window", run: screenshot("window") },
         { name: "Screenshot of the screen", icon: "video-display", keywords: "screenshot capture screen fullscreen", run: screenshot("output") },
         { name: "Screenshot and annotate", icon: "gnome-screenshot", keywords: "screenshot annotate draw edit swappy arrow blur",
-          run: exec(["sh", "-c", "sleep 0.3; grimshot save area - | swappy -f -"]) }
+          run: exec(["sh", "-c", "sleep 0.3; exec ~/.local/bin/screenshot area --edit"]) }
     ])
 
     readonly property var toolsItems: [
@@ -105,7 +105,7 @@ PanelWindow {
     readonly property var systemItems: [
         { name: "Lock", icon: "system-lock-screen", keywords: "screen verrouiller", run: exec([Quickshell.env("HOME") + "/.local/bin/lock-screen"]) },
         { name: "Sleep", icon: "system-suspend", keywords: "suspend veille", run: exec(["systemctl", "suspend"]) },
-        { name: "Log out", icon: "system-log-out", keywords: "logout exit session quit deconnexion", run: exec(["swaymsg", "exit"]) },
+        { name: "Log out", icon: "system-log-out", keywords: "logout exit session quit deconnexion", run: exec(["hyprctl", "dispatch", "hl.dsp.exit()"]) },
         { name: "Restart", icon: "system-reboot", keywords: "reboot power redemarrer", run: exec(["systemctl", "reboot"]) },
         { name: "Shut down", icon: "system-shutdown", keywords: "shutdown power off poweroff halt eteindre", run: exec(["systemctl", "poweroff"]) }
     ]
