@@ -16,17 +16,22 @@ Rectangle {
     readonly property var buttons: notification.actions.filter(a => a.identifier !== "default")
     readonly property var defaultAction: notification.actions.find(a => a.identifier === "default")
 
-    // Icon: the notification's image, else the app icon (a name or a path)
+    // Icon: the notification's image, else the app icon (a name or a path), else none
+    // (no generic icon: the text gets the room)
     function iconSource() {
         const n = notification;
+        // An icon name can come as the image (image://icon/<name>): only if the theme has it
+        if (n.image.startsWith("image://icon/"))
+            return Quickshell.iconPath(n.image.slice(13), true);
         if (n.image)
             return n.image;
         if (n.appIcon.startsWith("/") || n.appIcon.startsWith("file:"))
             return n.appIcon;
-        return Quickshell.iconPath(n.appIcon || n.desktopEntry, "dialog-information");
+        const name = n.appIcon || n.desktopEntry;
+        return name ? Quickshell.iconPath(name, true) : "";
     }
 
-    implicitHeight: content.implicitHeight + 24
+    implicitHeight: content.implicitHeight + 28
     color: Theme.bg
     border.color: critical ? Theme.red : Theme.accent
     border.width: 2
@@ -56,18 +61,19 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.margins: 12
-        spacing: 12
+        anchors.margins: 14
+        spacing: 14
 
         IconImage {
+            visible: source != ""
             Layout.alignment: Qt.AlignTop
-            implicitSize: 36
+            implicitSize: Theme.fontSize * 2 + 10
             source: root.iconSource()
         }
 
         ColumnLayout {
             Layout.fillWidth: true
-            spacing: 4
+            spacing: 6
 
             RowLayout {
                 Layout.fillWidth: true
@@ -76,7 +82,7 @@ Rectangle {
                 Label {
                     text: root.notification.summary || root.notification.appName
                     textFormat: Text.PlainText
-                    font.pixelSize: Theme.fontSize - 1
+                    font.pixelSize: Theme.fontSize + 1
                     font.bold: true
                     elide: Text.ElideRight
                     Layout.fillWidth: true
@@ -85,8 +91,8 @@ Rectangle {
                     visible: root.notification.summary !== "" && root.notification.appName !== ""
                     text: root.notification.appName
                     textFormat: Text.PlainText
-                    color: Theme.muted
-                    font.pixelSize: Theme.fontSize - 4
+                    color: Theme.fgDim
+                    font.pixelSize: Theme.fontSize - 2
                 }
             }
 
@@ -96,9 +102,9 @@ Rectangle {
                 // so nothing (images in particular) can be loaded from elsewhere
                 text: root.notification.body.replace(/<(?!\/?(b|i|u|a|br)\b)/gi, "&lt;")
                 textFormat: Text.StyledText
-                font.pixelSize: Theme.fontSize - 3
+                lineHeight: 1.15
                 wrapMode: Text.Wrap
-                maximumLineCount: 4
+                maximumLineCount: 6
                 elide: Text.ElideRight
                 Layout.fillWidth: true
                 // Only web and mail links; other schemes could start local handlers
@@ -121,7 +127,7 @@ Rectangle {
                         required property NotificationAction modelData
 
                         Layout.fillWidth: true
-                        implicitHeight: 28
+                        implicitHeight: Theme.fontSize * 2 + 2
                         color: buttonMouse.containsMouse ? Theme.accent : Theme.bgAlt
 
                         Label {
@@ -129,7 +135,7 @@ Rectangle {
                             text: parent.modelData.text
                             textFormat: Text.PlainText
                             color: buttonMouse.containsMouse ? Theme.bg : Theme.fg
-                            font.pixelSize: Theme.fontSize - 3
+                            font.pixelSize: Theme.fontSize - 1
                         }
                         MouseArea {
                             id: buttonMouse

@@ -44,7 +44,8 @@ Scope {
         screen: Util.focusedScreen
         anchors { top: true; right: true }
         margins { top: 8; right: 8 }
-        implicitWidth: 380
+        // Grows with the text size (390 px at 13 px text)
+        implicitWidth: Theme.fontSize * 30
         implicitHeight: column.implicitHeight
         exclusionMode: ExclusionMode.Normal
         exclusiveZone: 0
