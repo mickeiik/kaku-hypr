@@ -3,6 +3,7 @@
 # for speech to text, from its GitHub releases.
 hyprland                # the compositor (COPR)
 xdg-desktop-portal-hyprland  # screen sharing, screenshots for apps (COPR)
+hyprland-guiutils       # Hyprland's dialogs: app not responding, permissions (COPR)
 xdg-desktop-portal-gtk  # file pickers
 sddm                    # login manager (kaku login theme)
 sddm-wayland-sway       # the login screen runs on Sway, as on Fedora's Sway spin
