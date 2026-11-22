@@ -10,6 +10,9 @@ import Quickshell.Io
 //   built-in screen (eDP...)  its backlight, through brightnessctl
 //   monitors                  DDC/CI, through ddcutil (most monitors have it; some
 //                             have it off in their own menu)
+//   any screen in HDR         the white level of the desktop and other SDR content
+//                             (DisplayService.setSdrWhite, 50 to 450 nits): monitors
+//                             lock their own brightness in HDR
 // The keys change the focused screen, scrolling on a bar's display icon that bar's.
 // No polling: the level is shown right away (like the volume), written in the
 // background (a monitor takes ~50 ms per change: at most one every 250 ms, ending on
@@ -27,8 +30,12 @@ Singleton {
 
     property var devices: ({}) // screen name -> { kind: "backlight" | "ddc", bus, max }
     property var levels: ({}) // screen name -> percent
+    property var hdrLevels: ({}) // screen name -> percent, for screens in HDR (set here)
+
+    readonly property int hdrMinNits: 50
+    readonly property int hdrMaxNits: 450
     property string current: "" // the screen last changed (for the indicator)
-    readonly property int percent: levels[current] ?? 0
+    readonly property int percent: level(current)
     readonly property bool available: Object.keys(devices).length > 0
 
     property string gliding: "" // screen the keys are gliding (see glide)
@@ -39,20 +46,33 @@ Singleton {
     property var pending: ({}) // screen name -> percent waiting to be written
     property var lastWrite: ({}) // screen name -> time of its last write
     property var saved: ({}) // monitor name -> percent, as kept in stateFile
+    property var hdrToSave: ({}) // HDR screen name -> nits, written to the monitors file once settled
 
     readonly property string stateFile: Quickshell.env("HOME") + "/.local/state/quickshell/brightness"
 
     signal indicate() // show the on-screen indicator (keys, scrolling on the bar icon)
 
+    function hdrOn(name) {
+        return DisplayService.outputs.some(o => o.name === name && o.active && o.hdr);
+    }
+    // What a screen's brightness goes through now: its HDR white level while in HDR
+    function device(name) {
+        return hdrOn(name) ? { kind: "hdr" } : devices[name];
+    }
     function has(name) {
-        return devices[name] !== undefined;
+        return device(name) !== undefined;
     }
     function level(name) {
+        if (hdrOn(name)) {
+            const nits = DisplayService.sdrWhite(name);
+            return busy(name) && hdrLevels[name] !== undefined ? hdrLevels[name]
+                : Math.round((nits - hdrMinNits) * 100 / (hdrMaxNits - hdrMinNits));
+        }
         return levels[name] ?? 0;
     }
     // Never all the way to 0 on a backlight: on many laptops that turns it off
     function clamp(name, p) {
-        return Math.max(devices[name]?.kind === "backlight" ? 1 : 0, Math.min(100, Math.round(p)));
+        return Math.max(device(name)?.kind === "backlight" ? 1 : 0, Math.min(100, Math.round(p)));
     }
 
     // From a slider: straight to that level
@@ -80,16 +100,29 @@ Singleton {
         if (!has(name))
             return;
         const value = clamp(name, p);
-        levels = Object.assign({}, levels, { [name]: value });
+        const kind = device(name).kind;
+        if (kind === "hdr")
+            hdrLevels = Object.assign({}, hdrLevels, { [name]: value });
+        else
+            levels = Object.assign({}, levels, { [name]: value });
         pending[name] = value;
         flush();
-        if (devices[name].kind === "ddc") {
+        if (kind === "hdr") {
+            hdrToSave[name] = nits(value);
+            saveTimer.restart();
+        } else if (kind === "ddc") {
             saved[name] = value;
             saveTimer.restart();
         }
     }
-    // "<monitor name> <percent>" per line
+    function nits(p) {
+        return hdrMinNits + p * (hdrMaxNits - hdrMinNits) / 100;
+    }
+    // "<monitor name> <percent>" per line; HDR white levels go to the monitors file
     function save() {
+        for (const name of Object.keys(hdrToSave))
+            DisplayService.setSdrWhite(name, hdrToSave[name], true);
+        hdrToSave = {};
         const lines = Object.keys(saved).map(name => name + " " + saved[name]).join("\n");
         Quickshell.execDetached(["sh", "-c", 'mkdir -p "$(dirname "$1")" && printf "%s\\n" "$2" > "$1"', "save", stateFile, lines]);
     }
@@ -98,11 +131,11 @@ Singleton {
         const now = Date.now();
         let waiting = false;
         for (const name of Object.keys(pending)) {
-            const d = devices[name];
+            const d = device(name);
             if (!d) {
                 delete pending[name];
             } else if (now - (lastWrite[name] ?? 0) >= (d.kind === "ddc" ? 250 : 50)) {
-                write(d, pending[name]);
+                write(name, d, pending[name]);
                 lastWrite[name] = now;
                 delete pending[name];
             } else {
@@ -112,8 +145,10 @@ Singleton {
         if (waiting && !flushTimer.running)
             flushTimer.start();
     }
-    function write(d, p) {
-        if (d.kind === "backlight") {
+    function write(name, d, p) {
+        if (d.kind === "hdr") {
+            DisplayService.setSdrWhite(name, nits(p), false);
+        } else if (d.kind === "backlight") {
             Quickshell.execDetached(["brightnessctl", "-q", "set", p + "%"]);
             rereadAfter.restart();
         } else {
@@ -162,9 +197,12 @@ Singleton {
         if (changed)
             saveTimer.restart();
         devices = next;
+        for (const name of restore) { // straight to DDC/CI, even while the screen is in HDR
+            lv[name] = saved[name];
+            write(name, devices[name], saved[name]);
+            lastWrite[name] = Date.now();
+        }
         levels = lv;
-        for (const name of restore)
-            show(name, saved[name]);
     }
 
     IpcHandler {

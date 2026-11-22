@@ -47,6 +47,19 @@ Singleton {
     function setScale(name, scale) {
         apply(name, { scale: scale });
     }
+    // In HDR, how bright the desktop and other SDR content are: their white, in nits
+    // (BrightnessService's slider and keys, as the monitor's own brightness is locked
+    // in HDR). Applied right away; saved to the file only when persist is true.
+    function sdrWhite(name) {
+        const o = outputs.find(o => o.name === name);
+        const nits = o?.hypr.sdrMaxLuminance;
+        return nits !== undefined && nits !== 80 ? nits : 250;
+    }
+    function setSdrWhite(name, nits, persist) {
+        const o = outputs.find(o => o.name === name);
+        if (o?.active && o.hdr)
+            run(name, ruleFor(o, { sdrMax: Math.round(nits) }), persist);
+    }
     function setHdr(name, on) {
         hdrRefused = "";
         hdrAsked = on ? name : "";
@@ -80,7 +93,7 @@ Singleton {
         const scale = change.scale ?? o.scale;
         const hdr = change.hdr ?? o.hdr;
         const sdrMin = o.hdr && h.sdrMinLuminance !== undefined && h.sdrMinLuminance !== 0.2 ? h.sdrMinLuminance : 0.005;
-        const sdrMax = o.hdr && h.sdrMaxLuminance !== undefined && h.sdrMaxLuminance !== 80 ? h.sdrMaxLuminance : 250;
+        const sdrMax = change.sdrMax ?? (o.hdr && h.sdrMaxLuminance !== undefined && h.sdrMaxLuminance !== 80 ? h.sdrMaxLuminance : 250);
         return `{ output = "${o.name}", mode = "${h.width}x${h.height}@${h.refreshRate.toFixed(3)}", `
             + `position = "${h.x}x${h.y}", scale = ${scale}, transform = ${h.transform}`
             + (hdr ? `, bitdepth = 10, cm = "hdr", sdr_eotf = "gamma22", sdr_min_luminance = ${sdrMin}, sdr_max_luminance = ${sdrMax} }` : " }");

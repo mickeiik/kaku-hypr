@@ -144,7 +144,10 @@ Popout {
                     icon: ""
                     iconColor: Theme.yellow
                     value: BrightnessService.level(screen.name) / 100
-                    label: BrightnessService.level(screen.name) + "%"
+                    // In HDR: the white level of the desktop and other SDR content
+                    label: BrightnessService.hdrOn(screen.name)
+                        ? Math.round(BrightnessService.nits(BrightnessService.level(screen.name))) + " nits"
+                        : BrightnessService.level(screen.name) + "%"
                     onMoved: v => BrightnessService.set(screen.name, v * 100)
                 }
 
