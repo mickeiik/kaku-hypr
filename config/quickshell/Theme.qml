@@ -25,7 +25,7 @@ Singleton {
     readonly property var locale: Qt.locale("fr_FR")
 
     readonly property string font: "JetBrains Mono"
-    readonly property string iconFont: "Font Awesome 6 Free"
+    readonly property string iconFont: "Font Awesome 7 Free"
     readonly property int fontSize: TextSizeService.px
     readonly property int barHeight: fontSize + 17
 }

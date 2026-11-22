@@ -23,7 +23,7 @@ Rectangle {
     readonly property var colors: ["#7aa2f7", "#bb9af7", "#7dcfff", "#9ece6a", "#e0af68", "#ff9e64", "#2ac3de"]
     readonly property int fontSize: parseInt(config.fontSize) || 15
     readonly property string font: "JetBrains Mono"
-    readonly property string iconFont: "Font Awesome 6 Free"
+    readonly property string iconFont: "Font Awesome 7 Free"
     readonly property var locale: Qt.locale("fr_FR")
 
     property string user: userModel.lastUser

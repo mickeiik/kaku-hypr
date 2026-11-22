@@ -16,7 +16,8 @@ micro                   # text editor
 adw-gtk3-theme          # GTK3 apps in libadwaita style
 papirus-icon-theme      # icons
 jetbrains-mono-fonts-all    # font
-fontawesome-6-free-fonts    # bar and panel icons
+fontawesome-7-free-fonts    # bar and panel icons
+fontawesome-7-brands-fonts  # the Bluetooth icon
 brightnessctl           # screen brightness (laptop screen)
 ddcutil                 # screen brightness (monitors, DDC/CI)
 playerctl               # media players (Now Playing)
